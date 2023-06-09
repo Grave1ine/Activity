@@ -6,7 +6,9 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Button
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -17,15 +19,29 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 class EditProfileActivity : AppCompatActivity() {
 
     private lateinit var imageView: ImageView
+    private lateinit var  button: Button
+    private lateinit var userName: TextView
+    private lateinit var userSurname: TextView
+    private lateinit var userAge: TextView
+    private var imageViewUri: Uri? = null
+    private var userInfo = Transit(null, null,null)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_profile)
 
         imageView = findViewById(R.id.imageview_photo)
-        imageView.setOnClickListener {
-            createDialog()
-        }
+
+
+
+        userName = findViewById(R.id.textview_name)
+        userName.text = userInfo.name
+        userSurname = findViewById(R.id.textview_surname)
+        userSurname.text = userInfo.secondName
+        userAge = findViewById(R.id.textview_age)
+        userAge.text = userInfo.age
+
 
         findViewById<Toolbar>(R.id.toolbar).apply {
             inflateMenu(R.menu.menu)
@@ -39,19 +55,45 @@ class EditProfileActivity : AppCompatActivity() {
                 }
             }
         }
+
     }
 
+    override fun onStart() {
+        super.onStart()
+        imageView.setOnClickListener {
+            createDialog()
+        }
 
-    /**
-     * Используйте этот метод чтобы отобразить картинку полученную из медиатеки в ImageView
-     */
-    private fun populateImage(uri: Uri) {
-        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
-        imageView.setImageBitmap(bitmap)
+        button = findViewById(R.id.button4)
+        button.setOnClickListener(){
+            contractFillForm.launch(userInfo)
+        }
+    }
+
+    private val contractFillForm = registerForActivityResult(Contract()) { result ->
+        if (result != null) {
+            findViewById<TextView>(R.id.textview_name).text = result.name
+            findViewById<TextView>(R.id.textview_surname).text = result.secondName
+            findViewById<TextView>(R.id.textview_age).text = result.age
+
+                userInfo = Transit(
+                userName.text.toString(),
+                userSurname.text.toString(),
+                userAge.text.toString()
+            )
+        }
     }
 
     private fun openSenderApp() {
-        TODO("В качестве реализации метода отправьте неявный Intent чтобы поделиться профилем. В качестве extras передайте заполненные строки и картинку")
+
+
+                val telegram = Intent(Intent.ACTION_SEND).apply {
+                putExtra(Intent.EXTRA_STREAM, imageViewUri)
+                putExtra(Intent.EXTRA_TEXT, "${userInfo.name}\n${userInfo.secondName}\n${userInfo.age}")
+                type = "image/*"
+                setPackage("org.telegram.messenger")
+            }
+            startActivity(telegram)
     }
 
     private fun createDialog() {
@@ -79,10 +121,18 @@ class EditProfileActivity : AppCompatActivity() {
         alertDialog.show()
     }
 
+    /**
+     * Используйте этот метод чтобы отобразить картинку полученную из медиатеки в ImageView
+     */
+    private fun populateImage(uri: Uri) {
+        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
+        imageView.setImageBitmap(bitmap)
+    }
 
     private val resultImageContent = registerForActivityResult(ActivityResultContracts.GetContent()) { result ->    //открывает галерею
         val uri = result ?: return@registerForActivityResult
         populateImage(uri)
+        imageViewUri = result
     }
 
     private val permissionCamera = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -93,7 +143,7 @@ class EditProfileActivity : AppCompatActivity() {
                 //imageView.setImageResource(R.drawable.cat)
             }
             //разрешение не дано тогда -> permissionSetting()
-            !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> permissionSetting()             //если -> то?????
+            !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> permissionSetting()             //если запрос не дали то 110 строка (если ! убрать сразу после откаща будет исполняться permissionSetting)
             /*{
             //нажата кнопка не спрашивать больше
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -102,12 +152,12 @@ class EditProfileActivity : AppCompatActivity() {
             startActivity(intent)
         }*/
             else -> {
-                Toast.makeText(this, "???", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "??", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    private fun permissionSetting() {                                                                                //запрос после первого отказа
+    private fun permissionSetting() {                                                                                //запрос после второго отказа
         MaterialAlertDialogBuilder(this)
             .setMessage("нужно разрешение на использование камеры")
             .setPositiveButton("настройки") { _, _ ->
@@ -118,18 +168,18 @@ class EditProfileActivity : AppCompatActivity() {
             }.show()
     }
 
-    private fun runtimePermissionCamera() {                                                                        //как это все работает в этом блоке????
+    private fun runtimePermissionCamera() {
         // повторный запрет на использвование камеры
-        if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
-            if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+        if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {                     //true если разрешение было дано. т.к запрос идет в первый раз сразу идем на 135 строку
+            if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {                 //если отказали в первый и повторно делаем запрос то проваливаемся в это условие
                 MaterialAlertDialogBuilder(this)
                     .setMessage("нужно разрешение на использование камеры")
-                    .setNegativeButton("Отмена") { dialog, _ ->
-                        Toast.makeText(this, "???", Toast.LENGTH_LONG).show()
+                    .setNegativeButton("Отмена") { dialog, _ ->                                 //скип диалога после отказа во 2 раз
+                        Toast.makeText(this, "????", Toast.LENGTH_LONG).show()
                         dialog.cancel()
                     }
                     .setPositiveButton("Дать доступ") { _, _ ->
-                        permissionCamera.launch(Manifest.permission.CAMERA)
+                        permissionCamera.launch(Manifest.permission.CAMERA)                         //запрос на разрешение во втророй раз
                     }.show()
             }
         } else permissionCamera.launch(Manifest.permission.CAMERA)
@@ -158,5 +208,4 @@ class EditProfileActivity : AppCompatActivity() {
     }
     alertDialog.show()
 }*/
-
 }
