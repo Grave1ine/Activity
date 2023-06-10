@@ -125,14 +125,14 @@ class EditProfileActivity : AppCompatActivity() {
      * Используйте этот метод чтобы отобразить картинку полученную из медиатеки в ImageView
      */
     private fun populateImage(uri: Uri) {
-        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
+        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))                               //устанавливает фото
         imageView.setImageBitmap(bitmap)
     }
 
-    private val resultImageContent = registerForActivityResult(ActivityResultContracts.GetContent()) { result ->    //открывает галерею
+    private val resultImageContent = registerForActivityResult(ActivityResultContracts.GetContent()) { result ->    //открывает галерею (контракт с галереей)
         val uri = result ?: return@registerForActivityResult
-        populateImage(uri)
-        imageViewUri = result
+        populateImage(uri)                                                                                          //метод для установки фото
+        imageViewUri = result                                                                                       //для передачи в интент запишет то что выберем
     }
 
     private val permissionCamera = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
